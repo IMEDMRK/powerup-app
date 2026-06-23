@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0f172a; /* Dark Blue */
+}
+
+@theme inline {
+  --color-primary: #f97316; /* Orange */
+  --color-primary-dark: #ea580c; 
+  --color-secondary: #0f172a; /* Dark Blue */
+  --color-secondary-dark: #020617;
+  --font-sans: var(--font-tajawal);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Base custom utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes float-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-float-scale {
+  animation: float-scale 3s ease-in-out infinite;
+}
