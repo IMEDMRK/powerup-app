@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = { title: "الإعدادات" };
+
 export default async function SettingsPage() {
   let settings: any = null;
   let needsMigration = false;
