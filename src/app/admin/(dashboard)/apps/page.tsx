@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: "التطبيقات والربط" };
 
 export default async function AppsPage() {
-  const settings = await prisma.settings.findUnique({ where: { id: "default" } });
-  const appsConfig = (settings?.appsConfig as any) || {};
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: "default" } });
+    const appsConfig = (settings?.appsConfig as any) || {};
+    const googleSheetsActive = appsConfig?.googleSheets?.active === true;
 
-  const googleSheetsActive = appsConfig?.googleSheets?.active === true;
-
-  return (
+    return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-black text-gray-800 mb-2">التطبيقات والربط 🧩</h1>
@@ -55,4 +55,13 @@ export default async function AppsPage() {
       </div>
     </div>
   );
+  } catch (error: any) {
+    return (
+      <div className="p-8 bg-red-50 text-red-700 rounded-xl">
+        <h2 className="font-bold mb-4">حدث خطأ في السيرفر:</h2>
+        <pre dir="ltr" className="text-left text-sm overflow-auto">{error?.message || String(error)}</pre>
+        <pre dir="ltr" className="text-left text-xs overflow-auto mt-4">{error?.stack}</pre>
+      </div>
+    );
+  }
 }
