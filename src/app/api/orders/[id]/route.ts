@@ -117,8 +117,8 @@ export async function PATCH(
     data: updateData,
   });
 
-  if (body.status && body.status !== existingOrder.status) {
-    updateSheetStatus(id, body.status).catch(e => console.error("Sheet update error:", e));
+  if (Object.keys(body).length > 0) {
+    updateSheetStatus(updated).catch(e => console.error("Sheet update error:", e));
   }
 
   return NextResponse.json(updated);
