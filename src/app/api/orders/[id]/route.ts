@@ -113,16 +113,12 @@ export async function PATCH(
     }
   }
 
-  const updated = await prisma.order.update({
+  const updatedOrder = await prisma.order.update({
     where: { id },
     data: updateData,
   });
 
-  if (Object.keys(body).length > 0) {
-    updateSheetStatus(updated).catch(e => console.error("Sheet update error:", e));
-  }
-
-  return NextResponse.json(updated);
+  return NextResponse.json(updatedOrder);
 }
 
 export async function DELETE(
