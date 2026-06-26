@@ -79,8 +79,8 @@ export default async function SettingsPage() {
             <div className="space-y-4">
               <h3 className="text-lg font-bold text-blue-600 border-b pb-2">Meta (Facebook)</h3>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Meta Pixel ID</label>
-                <input name="metaPixelId" defaultValue={settings.metaPixelId || ""} type="text" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary outline-none" dir="ltr" placeholder="e.g. 1234567890" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Meta Pixel IDs <span className="text-xs text-gray-400 font-normal">(يمكنك وضع أكثر من واحد مفصولين بفاصلة)</span></label>
+                <input name="metaPixelId" defaultValue={settings.metaPixelId || ""} type="text" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary outline-none" dir="ltr" placeholder="e.g. 1234567890, 0987654321" />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Meta Conversion API Access Token</label>
@@ -90,8 +90,8 @@ export default async function SettingsPage() {
             <div className="space-y-4 pt-4">
               <h3 className="text-lg font-bold text-black border-b pb-2">TikTok</h3>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">TikTok Pixel ID</label>
-                <input name="tiktokPixelId" defaultValue={settings.tiktokPixelId || ""} type="text" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary outline-none" dir="ltr" placeholder="e.g. C1234567" />
+                <label className="block text-sm font-bold text-gray-700 mb-1">TikTok Pixel IDs <span className="text-xs text-gray-400 font-normal">(يمكنك وضع أكثر من واحد مفصولين بفاصلة)</span></label>
+                <input name="tiktokPixelId" defaultValue={settings.tiktokPixelId || ""} type="text" className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-primary outline-none" dir="ltr" placeholder="e.g. C1234567, C7654321" />
               </div>
             </div>
             <div className="space-y-4 pt-4">
