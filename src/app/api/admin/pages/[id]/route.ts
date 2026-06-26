@@ -49,6 +49,9 @@ export async function PUT(
   // ─── Price fields ───
   if ("salePrice" in rest)     pageData.salePrice     = rest.salePrice     !== null && rest.salePrice     !== "" ? Number(rest.salePrice)     : null;
   if ("originalPrice" in rest) pageData.originalPrice = rest.originalPrice !== null && rest.originalPrice !== "" ? Number(rest.originalPrice) : null;
+  // ─── Tracking Pixels ───
+  if (rest.metaPixelIds !== undefined) pageData.metaPixelIds = rest.metaPixelIds;
+  if (rest.tiktokPixelIds !== undefined) pageData.tiktokPixelIds = rest.tiktokPixelIds;
   // ─── Video section labels ───
   if (rest.videoTitle    !== undefined) pageData.videoTitle    = rest.videoTitle    || null;
   if (rest.videoSubtitle !== undefined) pageData.videoSubtitle = rest.videoSubtitle || null;
