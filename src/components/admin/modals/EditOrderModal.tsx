@@ -68,6 +68,29 @@ export default function EditOrderModal({ order, onClose, onSaved, canViewStats, 
     setForm((p: any) => ({ ...p, ...updates }));
   };
 
+  const handleOfferSelect = (offerId: string) => {
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+    
+    let updates: any = {
+      offerId: offer.id,
+      offerLabel: offer.label,
+      quantity: offer.quantity,
+      unitPrice: offer.salePrice,
+    };
+
+    if (offer.freeShipping) {
+      updates.deliveryPrice = 0;
+    } else {
+      const wMatch = wilayas?.find((w: any) => w.wilayaName === form.wilaya);
+      if (wMatch) {
+        updates.deliveryPrice = wMatch.deliveryPrice;
+      }
+    }
+    
+    setForm((p: any) => ({ ...p, ...updates }));
+  };
+
   const save = async () => {
     if (form.status === "ملغاة" && !form.cancelReason) {
       alert("الرجاء اختيار سبب الإلغاء");
@@ -193,8 +216,34 @@ export default function EditOrderModal({ order, onClose, onSaved, canViewStats, 
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
                 <label className="block text-xs text-gray-500 mb-1">العرض المختار</label>
-                <input value={form.offerLabel || ""} onChange={e => set("offerLabel", e.target.value)}
-                  placeholder="مثال: علبتان" className={input} />
+                <select 
+                  value={form.offerId || ""} 
+                  onChange={e => {
+                    if (e.target.value === "custom") {
+                      set("offerId", "");
+                      set("offerLabel", "");
+                    } else {
+                      handleOfferSelect(e.target.value);
+                    }
+                  }} 
+                  className={input}
+                >
+                  <option value="" disabled>-- اختر عرضاً --</option>
+                  <option value="custom">عرض مخصص (إدخال يدوي)</option>
+                  {offers.filter(o => !form.pageSlug || o.page?.slug === form.pageSlug || o.pageId === form.pageSlug).map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.label} ({o.quantity} علبة) - {o.salePrice} دج
+                    </option>
+                  ))}
+                </select>
+                {!form.offerId && (
+                  <input 
+                    value={form.offerLabel || ""} 
+                    onChange={e => set("offerLabel", e.target.value)}
+                    placeholder="اكتب اسم العرض يدوياً" 
+                    className={input + " mt-2"} 
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">الكمية</label>
