@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShoppingBag, Settings, LogOut, Globe, MapPin, Shield, Calculator, Wallet, Truck, TrendingUp, Repeat, ClipboardList, FileText, MessageSquare, Trash, ChevronDown, ChevronUp } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Settings, LogOut, Globe, MapPin, Shield, Calculator, Wallet, Truck, TrendingUp, Repeat, ClipboardList, FileText, MessageSquare, Trash, ChevronDown, ChevronUp, Puzzle } from "lucide-react";
 import { useDashboard } from "./DashboardProvider";
 
 export default function SidebarNav({ isAdmin, perms }: { isAdmin: boolean; perms: Record<string, boolean> }) {
@@ -54,6 +54,7 @@ export default function SidebarNav({ isAdmin, perms }: { isAdmin: boolean; perms
       label: "الإعدادات",
       items: [
         { href: "/admin/wilayas", icon: MapPin, label: t("delivery"), permission: "canViewWilayas" },
+        { href: "/admin/apps", icon: Puzzle, label: "التطبيقات والربط", permission: "canViewSettings" },
         { href: "/admin/settings", icon: Settings, label: t("settings"), permission: "canViewSettings" },
       ]
     }
