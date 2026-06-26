@@ -11,16 +11,34 @@ function doPost(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     var data = JSON.parse(e.postData.contents);
+    var action = data.action || "append";
+    
+    if (action === "update_status") {
+      var orderIdToFind = data.orderId;
+      var newStatus = data.status;
+      
+      var dataRange = sheet.getDataRange();
+      var values = dataRange.getValues();
+      
+      // البحث عن رقم الطلبية وتحديث حالتها في العمود 16 (P)
+      for (var i = 1; i < values.length; i++) {
+        if (values[i][0] == orderIdToFind) {
+          sheet.getRange(i + 1, 16).setValue(newStatus);
+          return ContentService.createTextOutput(JSON.stringify({ "status": "success", "message": "updated" })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ "status": "not_found" })).setMimeType(ContentService.MimeType.JSON);
+    }
     
     // إذا كانت هذه أول مرة، نقوم بإضافة العناوين
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         "رقم الطلب", "تاريخ الطلب", "الاسم الكامل", "الهاتف", 
         "الولاية", "البلدية", "المنتج", "العرض", "الكمية", 
-        "سعر الوحدة", "التوصيل", "الإجمالي", "المنصة", "تيك توك", "فيسبوك"
+        "سعر الوحدة", "التوصيل", "الإجمالي", "المنصة", "تيك توك", "فيسبوك", "حالة الطلبية"
       ]);
       // تلوين العناوين
-      sheet.getRange("A1:O1").setBackground("#f97316").setFontColor("white").setFontWeight("bold");
+      sheet.getRange("A1:P1").setBackground("#f97316").setFontColor("white").setFontWeight("bold");
     }
 
     var row = [
@@ -38,7 +56,8 @@ function doPost(e) {
       data.totalPrice || "",
       data.pageSlug || "",
       data.ttclid || "",
-      data.fbclid || ""
+      data.fbclid || "",
+      data.status || "جديد"
     ];
     
     sheet.appendRow(row);
