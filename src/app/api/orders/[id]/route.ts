@@ -20,6 +20,7 @@ export async function PATCH(
     phone: body.phone ?? undefined,
     wilaya: body.wilaya ?? undefined,
     baladiya: body.baladiya ?? undefined,
+    offerId: body.offerId ?? undefined,
     offerLabel: body.offerLabel ?? undefined,
     quantity: body.quantity !== undefined ? Number(body.quantity) : undefined,
     unitPrice: body.unitPrice !== undefined ? Number(body.unitPrice) : undefined,
