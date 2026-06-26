@@ -1,7 +1,19 @@
 import { CheckCircle, Phone, Clock } from "lucide-react";
 import PurchasePixel from "@/components/PurchasePixel";
+import PagePixels from "@/components/PagePixels";
+import { prisma } from "@/lib/prisma";
 
-export default function ThankYouPage() {
+interface Props {
+  searchParams: Promise<{ slug?: string }>;
+}
+
+export default async function ThankYouPage({ searchParams }: Props) {
+  const { slug } = await searchParams;
+  let page = null;
+  if (slug) {
+    page = await prisma.landingPage.findFirst({ where: { slug } });
+  }
+
   return (
     <main
       className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden"
@@ -9,6 +21,7 @@ export default function ThankYouPage() {
       style={{ background: "linear-gradient(135deg, #1a1208 0%, #2d1a0a 60%, #1a1208 100%)" }}
     >
       <PurchasePixel />
+      {page && <PagePixels page={page} />}
       {/* Background blobs */}
       <div className="absolute top-0 left-0 w-96 h-96 rounded-full pointer-events-none"
         style={{ background: "rgba(249,115,22,0.15)", filter: "blur(120px)" }} />
