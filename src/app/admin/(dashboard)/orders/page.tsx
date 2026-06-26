@@ -5,8 +5,15 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export const dynamic = 'force-dynamic';
 
-export default async function OrdersPage() {
+export default async function OrdersPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
   const session = await getServerSession(authOptions);
+  
+  const page = Number(searchParams?.page) || 1;
+  const q = typeof searchParams?.q === 'string' ? searchParams.q : '';
+  const statusFilter = typeof searchParams?.status === 'string' ? searchParams.status : '';
+  const productFilter = typeof searchParams?.product === 'string' ? searchParams.product : '';
+  const pageSize = 10;
+
   let settings: any = null;
   let orders: any[] = [];
   let deliveryProviders: any[] = [];
@@ -14,6 +21,12 @@ export default async function OrdersPage() {
   let wilayas: any[] = [];
   let offers: any[] = [];
   let products: any[] = [];
+  let totalOrders = 0;
+  let statsTotal = 0;
+  let statsPending = 0;
+  let statsDrafts = 0;
+  let statsConfirmed = 0;
+  let statsCancelled = 0;
 
   try {
     settings = await prisma.settings.findUnique({ where: { id: "default" } });
@@ -57,31 +70,64 @@ export default async function OrdersPage() {
       select: { id: true, slug: true, productName: true, stockCount: true }
     });
 
-    let whereClause: any = {};
+    let whereClause: any = { isDeleted: false };
+    
     if (userRole !== "ADMIN") {
       whereClause = {
-        isDeleted: false,
+        ...whereClause,
         OR: [
           { assignedToId: userId },
           { assignedToId: null }
         ]
       };
-      // Apply page restriction if needed
       const perms = user?.permissions || {};
       if (perms.canManageAllPages === false && Array.isArray(perms.allowedPages) && perms.allowedPages.length > 0) {
         whereClause.pageSlug = { in: perms.allowedPages };
       } else if (perms.canManageAllPages === false) {
-        // If they can't manage all pages and have NO allowed pages, show nothing
         whereClause.pageSlug = { in: ["__NONE__"] };
       }
     }
 
-    // Ensure deleted orders are always hidden from main list
-    whereClause.isDeleted = false;
+    // Base stats (without search/filters)
+    const baseStatsData = await prisma.order.groupBy({
+      by: ['status'],
+      where: whereClause,
+      _count: true
+    });
+    
+    for (const st of baseStatsData) {
+      statsTotal += st._count;
+      if (st.status === "مؤكدة") statsConfirmed += st._count;
+      else if (st.status === "ملغاة") statsCancelled += st._count;
+      else if (st.status === "غير مكتملة") statsDrafts += st._count;
+      else statsPending += st._count;
+    }
+
+    // Apply Filters for table display
+    if (q) {
+      whereClause = {
+        ...whereClause,
+        OR: [
+          { fullName: { contains: q } },
+          { phone: { contains: q } },
+          { wilaya: { contains: q } }
+        ]
+      };
+    }
+    if (statusFilter) {
+      whereClause.status = statusFilter;
+    }
+    if (productFilter) {
+      whereClause.pageSlug = productFilter;
+    }
+
+    totalOrders = await prisma.order.count({ where: whereClause });
 
     orders = await prisma.order.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       select: {
         id: true,
         fullName: true,
@@ -124,7 +170,7 @@ export default async function OrdersPage() {
       return { ...o, hasRetour, hasCancelled, isDuplicate };
     });
   } catch (err) {
-    console.error("Database not migrated yet:", err);
+    console.error("Error fetching orders:", err);
   }
 
   return (
@@ -137,6 +183,16 @@ export default async function OrdersPage() {
       </div>
       <OrdersTable 
         initialOrders={orders} 
+        totalOrders={totalOrders}
+        currentPage={page}
+        currentSearch={q}
+        currentFilterStatus={statusFilter}
+        currentFilterProduct={productFilter}
+        statsTotal={statsTotal}
+        statsPending={statsPending}
+        statsDrafts={statsDrafts}
+        statsConfirmed={statsConfirmed}
+        statsCancelled={statsCancelled}
         deliveryProviders={deliveryProviders} 
         agents={agents}
         wilayas={wilayas}
