@@ -8,6 +8,14 @@ import { prisma } from "@/lib/prisma";
 import DailyGoalProgress from "@/components/admin/DailyGoalProgress";
 import { DashboardProvider } from "@/components/admin/DashboardProvider";
 import TopBar from "@/components/admin/TopBar";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s | لوحة تحكم Power Up",
+    default: "الرئيسية | لوحة تحكم Power Up",
+  },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
