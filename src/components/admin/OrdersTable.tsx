@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { X, Save, Trash2, Phone, User, MapPin, Package, Tag, Truck, DollarSign, Search, Filter, Download } from "lucide-react";
 import { useDashboard } from "./DashboardProvider";
 
@@ -55,511 +56,8 @@ function getRowBg(status: string) {
   }
 }
 
-// ── Edit Modal ─────────────────────────────────────────────
-function EditModal({ order, onClose, onSaved, canViewStats, offers, wilayas }: { order: any; onClose: () => void; onSaved: (updated: any) => void; canViewStats: boolean, offers: any[], wilayas: any[] }) {
-  const [form, setForm] = useState({ ...order });
-  const [saving, setSaving] = useState(false);
-
-  const [localBaladiyas, setLocalBaladiyas] = useState<string[]>([]);
-  useEffect(() => {
-    if (form.wilaya) {
-      fetch(`/api/geo/communes?wilaya=${encodeURIComponent(form.wilaya)}`)
-        .then(res => res.json())
-        .then(data => setLocalBaladiyas(data))
-        .catch(() => setLocalBaladiyas([]));
-    }
-  }, [form.wilaya]);
-
-  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-
-  // auto-compute total
-  useEffect(() => {
-    const total = (Number(form.unitPrice) || 0) + (Number(form.deliveryPrice) || 0) - (Number(form.discount) || 0);
-    setForm((p: any) => ({ ...p, totalPrice: total }));
-  }, [form.unitPrice, form.deliveryPrice, form.discount]);
-
-  const handleQuantityChange = (newQ: number) => {
-    let updates: any = { quantity: newQ };
-
-    // Try to find matching offer
-    if (form.pageSlug && offers && offers.length > 0) {
-      // Find offer matching the pageSlug and the exact quantity
-      const matchingOffer = offers.find(o => 
-        (o.page?.slug === form.pageSlug || o.pageId === form.pageSlug) && o.quantity === newQ
-      );
-      
-      // If we couldn't match by page object, we can just try to match by quantity if there's only one page
-      // But usually offers have `page` object populated
-      
-      const offer = matchingOffer || offers.find(o => o.quantity === newQ);
-
-      if (offer) {
-        updates.unitPrice = offer.salePrice;
-        updates.offerId = offer.id;
-        updates.offerLabel = offer.label;
-
-        if (offer.freeShipping) {
-          updates.deliveryPrice = 0;
-        } else {
-          // Restore normal wilaya price if not free shipping
-          const wMatch = wilayas?.find((w: any) => w.wilayaName === form.wilaya);
-          if (wMatch) {
-            updates.deliveryPrice = wMatch.deliveryPrice;
-          }
-        }
-      }
-    }
-    setForm((p: any) => ({ ...p, ...updates }));
-  };
-
-  const save = async () => {
-    if (form.status === "ملغاة" && !form.cancelReason) {
-      alert("الرجاء اختيار سبب الإلغاء");
-      return;
-    }
-    setSaving(true);
-    const res = await fetch(`/api/orders/${order.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) { onSaved(await res.json()); onClose(); }
-    else alert("حدث خطأ أثناء الحفظ");
-    setSaving(false);
-  };
-
-  const del = async () => {
-    if (!confirm("هل تريد حذف هذا الطلب نهائياً؟")) return;
-    await fetch(`/api/orders/${order.id}`, { method: "DELETE" });
-    onClose();
-    window.location.reload();
-  };
-
-  const input = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none";
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl z-10">
-          <div>
-            <h2 className="text-xl font-black text-gray-900">تعديل الطلبية</h2>
-            <p className="text-xs text-gray-400 mt-0.5 font-mono">{order.id.slice(0, 8)}...</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* Status */}
-          <div>
-            <label className="block text-xs font-black text-gray-600 mb-2 uppercase tracking-wide">حالة الطلبية</label>
-            <div className="grid grid-cols-2 gap-2">
-              {STATUSES.map(s => (
-                <button key={s.value} type="button"
-                  onClick={() => set("status", s.value)}
-                  className={`text-right px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${form.status === s.value ? s.color + " border-current scale-[1.02] shadow-sm" : "border-gray-100 hover:border-gray-300 text-gray-600"}`}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            {form.status === "ملغاة" && (
-              <div className="mt-3 p-3 bg-red-50 rounded-xl border border-red-200">
-                <label className="block text-xs font-black text-red-800 mb-1">سبب الإلغاء (إجباري)</label>
-                <select 
-                  value={form.cancelReason || ""}
-                  onChange={e => set("cancelReason", e.target.value)}
-                  className={input + " border-red-200 text-red-900"}
-                >
-                  <option value="" disabled>-- اختر السبب --</option>
-                  {[
-                    "السعر غالي",
-                    "غيّر رأيه",
-                    "اشترى من مكان آخر",
-                    "رقم خاطئ / لا يعمل",
-                    "لا يرد",
-                    "مكررة",
-                    "غير ذلك"
-                  ].map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <hr className="border-gray-100" />
-
-          {/* Customer Info */}
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-1.5">
-              <User size={13} /> معلومات الزبون
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">الاسم الكامل</label>
-                <input value={form.fullName} onChange={e => set("fullName", e.target.value)} className={input} />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">رقم الهاتف</label>
-                <input value={form.phone} onChange={e => set("phone", e.target.value)} dir="ltr" className={input + " text-right"} />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">الولاية</label>
-                <select value={form.wilaya || ""} onChange={e => {
-                  set("wilaya", e.target.value);
-                  set("baladiya", "");
-                }} className={input}>
-                  <option value="" disabled>-- اختر الولاية --</option>
-                  {wilayas.map((w: any) => (
-                    <option key={w.wilayaCode} value={w.wilayaName}>{w.wilayaCode} - {w.wilayaName}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">البلدية</label>
-                {localBaladiyas.length > 0 ? (
-                  <select value={form.baladiya || ""} onChange={e => set("baladiya", e.target.value)} className={input}>
-                    <option value="" disabled>-- اختر البلدية --</option>
-                    {localBaladiyas.map((b: string) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input value={form.baladiya || ""} onChange={e => set("baladiya", e.target.value)} className={input} placeholder="ادخل اسم البلدية" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          {/* Order Details */}
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-1.5">
-              <Package size={13} /> تفاصيل الطلبية
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-xs text-gray-500 mb-1">العرض المختار</label>
-                <input value={form.offerLabel || ""} onChange={e => set("offerLabel", e.target.value)}
-                  placeholder="مثال: علبتان" className={input} />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">الكمية</label>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => {
-                    const newQ = Math.max(1, (form.quantity || 1) - 1);
-                    handleQuantityChange(newQ);
-                  }}
-                    className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-100 shrink-0">−</button>
-                  <input type="number" min={1} value={form.quantity || 1} onChange={e => {
-                    const newQ = parseInt(e.target.value) || 1;
-                    handleQuantityChange(newQ);
-                  }}
-                    className={input + " text-center font-bold"} />
-                  <button type="button" onClick={() => {
-                    const newQ = (form.quantity || 1) + 1;
-                    handleQuantityChange(newQ);
-                  }}
-                    className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center text-lg font-bold hover:bg-gray-100 shrink-0">+</button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">المنتج</label>
-                <input value={form.pageSlug || ""} onChange={e => set("pageSlug", e.target.value)}
-                  placeholder="powerup" className={input} />
-              </div>
-              <div className="col-span-2 mt-2">
-                <label className="block text-xs text-gray-500 mb-1">ملاحظات (تظهر لشركة التوصيل والموظفين)</label>
-                <textarea 
-                  value={form.notes || ""} 
-                  onChange={e => set("notes", e.target.value)}
-                  placeholder="اكتب أي ملاحظة هنا (مثال: الزبون يطلب التوصيل بعد الساعة 4 مساءً)" 
-                  className={input + " min-h-[80px] resize-y"} 
-                />
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          {/* Pricing */}
-          {canViewStats && (
-            <div>
-              <label className="block text-xs font-black text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-1.5">
-                <DollarSign size={13} /> الأسعار والتكاليف
-              </label>
-              <div className="grid grid-cols-5 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">سعر المنتج (دج)</label>
-                  <input type="number" value={form.unitPrice || 0} onChange={e => set("unitPrice", parseInt(e.target.value) || 0)}
-                    className={input + " text-center font-bold"} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">تكلفة الشراء (دج)</label>
-                  <input type="number" value={form.productCost || 0} onChange={e => set("productCost", parseInt(e.target.value) || 0)}
-                    className={input + " text-center font-bold text-red-600 bg-red-50 border-red-200"} title="سعر الشراء الأصلي (لحساب صافي الربح)" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">سعر التوصيل (دج)</label>
-                  <input type="number" value={form.deliveryPrice || 0} onChange={e => set("deliveryPrice", parseInt(e.target.value) || 0)}
-                    className={input + " text-center font-bold"} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">تخفيض (دج)</label>
-                  <input type="number" value={form.discount || 0} onChange={e => set("discount", parseInt(e.target.value) || 0)}
-                    className={input + " text-center font-bold text-green-600 border-green-200 focus:ring-green-500"} title="قيمة التخفيض" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">الإجمالي (دج)</label>
-                  <div className={input + " text-center font-black text-primary bg-orange-50 border-primary/30"}>
-                    {((form.unitPrice || 0) + (form.deliveryPrice || 0) - (form.discount || 0)).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
-          <button onClick={del} className="flex items-center gap-2 text-red-500 hover:text-red-700 text-sm font-bold transition-colors">
-            <Trash2 size={16} /> حذف الطلبية
-          </button>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">
-              إلغاء
-            </button>
-            <button onClick={save} disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-dark disabled:opacity-60 transition-all">
-              <Save size={16} />
-              {saving ? "جاري الحفظ..." : "حفظ التغييرات"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── New Order Modal ─────────────────────────────────────────────
-function NewOrderModal({ onClose, onCreated, offers, wilayas, products = [] }: { onClose: () => void; onCreated: (order: any) => void; offers: any[], wilayas: any[], products: any[] }) {
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [form, setForm] = useState<any>({
-    fullName: "",
-    phone: "",
-    wilaya: "",
-    baladiya: "",
-    pageSlug: "",
-    offerId: "",
-    offerLabel: "",
-    quantity: 1,
-    unitPrice: 0,
-    deliveryPrice: 0,
-    discount: 0,
-    totalPrice: 0,
-    notes: ""
-  });
-  const [saving, setSaving] = useState(false);
-  const [localBaladiyas, setLocalBaladiyas] = useState<string[]>([]);
-
-  const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
-
-  useEffect(() => {
-    if (form.wilaya) {
-      fetch(`/api/geo/communes?wilaya=${encodeURIComponent(form.wilaya)}`)
-        .then(res => res.json())
-        .then(data => setLocalBaladiyas(data))
-        .catch(() => setLocalBaladiyas([]));
-    }
-  }, [form.wilaya]);
-
-  // auto-compute total
-  useEffect(() => {
-    const total = (Number(form.unitPrice) || 0) + (Number(form.deliveryPrice) || 0) - (Number(form.discount) || 0);
-    setForm((p: any) => ({ ...p, totalPrice: total }));
-  }, [form.unitPrice, form.deliveryPrice, form.discount]);
-
-  const handleOfferChange = (offerId: string) => {
-    const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-    
-    let updates: any = {
-      offerId: offer.id,
-      offerLabel: offer.label,
-      quantity: offer.quantity,
-      unitPrice: offer.salePrice,
-      pageSlug: offer.page?.slug || offer.pageId
-    };
-
-    if (offer.freeShipping) {
-      updates.deliveryPrice = 0;
-    } else {
-      const wMatch = wilayas.find((w: any) => w.wilayaName === form.wilaya);
-      if (wMatch) {
-        updates.deliveryPrice = wMatch.deliveryPrice;
-      }
-    }
-    setForm((p: any) => ({ ...p, ...updates }));
-  };
-
-  const handleWilayaChange = (wilayaName: string) => {
-    set("wilaya", wilayaName);
-    set("baladiya", "");
-    // Update delivery price if not free shipping
-    const offer = offers.find(o => o.id === form.offerId);
-    if (!offer?.freeShipping) {
-      const wMatch = wilayas.find((w: any) => w.wilayaName === wilayaName);
-      if (wMatch) set("deliveryPrice", wMatch.deliveryPrice);
-    }
-  };
-
-  const create = async () => {
-    if (!form.fullName || !form.phone || !form.wilaya || !form.baladiya) {
-      alert("الرجاء إدخال الاسم، الهاتف، الولاية والبلدية");
-      return;
-    }
-    setSaving(true);
-    const res = await fetch(`/api/orders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) { 
-      const data = await res.json();
-      if (data.order) onCreated(data.order);
-      onClose(); 
-    } else {
-      const err = await res.json();
-      alert("حدث خطأ: " + (err.error || ""));
-    }
-    setSaving(false);
-  };
-
-  const input = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none";
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl z-10">
-          <div>
-            <h2 className="text-xl font-black text-gray-900">إضافة طلبية يدوية جديدة ✍️</h2>
-            <p className="text-xs text-gray-400 mt-0.5">قم بإدخال بيانات الطلبية مباشرة</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* Customer Info */}
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-1.5">
-              <User size={13} /> معلومات الزبون
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">الاسم الكامل *</label>
-                <input value={form.fullName} onChange={e => set("fullName", e.target.value)} className={input} placeholder="اسم الزبون" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">رقم الهاتف *</label>
-                <input value={form.phone} onChange={e => set("phone", e.target.value)} dir="ltr" className={input + " text-right"} placeholder="05XX XX XX XX" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">الولاية *</label>
-                <select value={form.wilaya} onChange={e => handleWilayaChange(e.target.value)} className={input}>
-                  <option value="" disabled>-- اختر الولاية --</option>
-                  {wilayas.map((w: any) => (
-                    <option key={w.wilayaCode} value={w.wilayaName}>{w.wilayaCode} - {w.wilayaName}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">البلدية *</label>
-                {localBaladiyas.length > 0 ? (
-                  <select value={form.baladiya} onChange={e => set("baladiya", e.target.value)} className={input}>
-                    <option value="" disabled>-- اختر البلدية --</option>
-                    {localBaladiyas.map((b: string) => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input value={form.baladiya} onChange={e => set("baladiya", e.target.value)} className={input} placeholder="ادخل اسم البلدية" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          <hr className="border-gray-100" />
-
-          {/* Order Details */}
-          <div>
-            <label className="block text-xs font-black text-gray-500 mb-3 uppercase tracking-wide flex items-center gap-1.5">
-              <Package size={13} /> تفاصيل الطلبية
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-xs text-gray-500 mb-1">اختر المنتج (لربط المخزون)</label>
-                <select value={selectedProduct} onChange={e => {
-                  setSelectedProduct(e.target.value);
-                  set("offerId", "");
-                  set("offerLabel", "");
-                  set("pageSlug", "");
-                  set("unitPrice", 0);
-                  set("deliveryPrice", 0);
-                }} className={input}>
-                  <option value="" disabled>-- اختر المنتج --</option>
-                  {products.map((p: any) => (
-                    <option key={p.id} value={p.id}>
-                      {p.productName || p.slug} (المخزون المتبقي: {p.stockCount})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedProduct && (
-                <div className="col-span-2">
-                  <label className="block text-xs text-gray-500 mb-1">اختر العرض</label>
-                  <select value={form.offerId || ""} onChange={e => handleOfferChange(e.target.value)} className={input}>
-                    <option value="" disabled>-- اختر العرض المتاح --</option>
-                    {offers.filter((o: any) => o.pageId === selectedProduct).map((o: any) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label} ({o.salePrice} دج)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              
-              <div className="col-span-2 mt-2">
-                <label className="block text-xs text-gray-500 mb-1">ملاحظات للموظف / التوصيل</label>
-                <textarea 
-                  value={form.notes} 
-                  onChange={e => set("notes", e.target.value)}
-                  placeholder="ملاحظات..." 
-                  className={input + " min-h-[80px] resize-y"} 
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-gray-100 bg-gray-50 rounded-b-3xl gap-3">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors">
-            إلغاء
-          </button>
-          <button onClick={create} disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-dark disabled:opacity-60 transition-all">
-            <Save size={16} />
-            {saving ? "جاري الإضافة..." : "حفظ وإنشاء الطلبية"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import EditModal from "./modals/EditOrderModal";
+import NewOrderModal from "./modals/NewOrderModal";
 
 const getQualityBadges = (stats: any) => {
   if (!stats) return null;
@@ -585,12 +83,35 @@ const getQualityBadges = (stats: any) => {
 };
 
 // ── Main Table ─────────────────────────────────────────────
-export default function OrdersTable({ initialOrders = [], user, agents = [], offers = [], deliveryProviders = [], wilayas = [], products = [] }: any) {
+export default function OrdersTable({ 
+  initialOrders = [], 
+  totalOrders = 0,
+  currentPage = 1,
+  currentSearch = "",
+  currentFilterStatus = "",
+  currentFilterProduct = "",
+  statsTotal = 0,
+  statsPending = 0,
+  statsDrafts = 0,
+  statsConfirmed = 0,
+  statsCancelled = 0,
+  user, agents = [], offers = [], deliveryProviders = [], wilayas = [], products = [] 
+}: any) {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>(initialOrders);
   const { t } = useDashboard();
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterProduct, setFilterProduct] = useState("");
+  
+  const [search, setSearch] = useState(currentSearch);
+  const [filterStatus, setFilterStatus] = useState(currentFilterStatus);
+  const [filterProduct, setFilterProduct] = useState(currentFilterProduct);
+  
+  useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
+  useEffect(() => {
+    setSearch(currentSearch);
+    setFilterStatus(currentFilterStatus);
+    setFilterProduct(currentFilterProduct);
+  }, [currentSearch, currentFilterStatus, currentFilterProduct]);
+
   const [editOrder, setEditOrder] = useState<any | null>(null);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -602,8 +123,6 @@ export default function OrdersTable({ initialOrders = [], user, agents = [], off
   const [cancelingBulk, setCancelingBulk] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ id: string, reason: string } | null>(null);
   
-  // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
   const CANCEL_REASONS = [
@@ -622,28 +141,37 @@ export default function OrdersTable({ initialOrders = [], user, agents = [], off
   const canManageDelivery = isAdmin || perms.canManageDelivery;
 
   // Stats
-  const total = orders.length;
-  const confirmed = orders.filter(o => o.status === "مؤكدة").length;
-  const cancelled = orders.filter(o => o.status === "ملغاة").length;
-  const drafts = orders.filter(o => o.status === "غير مكتملة").length;
-  const pending = orders.filter(o => !["مؤكدة", "ملغاة", "غير مكتملة"].includes(o.status)).length;
+  const total = statsTotal;
+  const confirmed = statsConfirmed;
+  const cancelled = statsCancelled;
+  const drafts = statsDrafts;
+  const pending = statsPending;
 
-  const filtered = orders.filter(o => {
-    const q = search.toLowerCase();
-    const matchSearch = o.fullName?.includes(q) || o.phone?.includes(q) || o.wilaya?.includes(q);
-    const matchStatus = filterStatus ? o.status === filterStatus : true;
-    const matchProduct = filterProduct ? o.pageSlug === filterProduct : true;
-    return matchSearch && matchStatus && matchProduct;
-  });
+  const filtered = orders; // Kept for compatibility with toggleAll
+  const paginatedOrders = orders;
+  const totalPages = Math.ceil(totalOrders / pageSize) || 1;
 
-  // Pagination logic
-  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-  const paginatedOrders = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const applyFilters = () => {
+    const params = new URLSearchParams();
+    if (search) params.set("q", search);
+    if (filterStatus) params.set("status", filterStatus);
+    if (filterProduct) params.set("product", filterProduct);
+    params.set("page", "1");
+    router.push(`/admin/orders?${params.toString()}`);
+  };
 
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, filterStatus, filterProduct]);
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams();
+    if (currentSearch) params.set("q", currentSearch);
+    if (currentFilterStatus) params.set("status", currentFilterStatus);
+    if (currentFilterProduct) params.set("product", currentFilterProduct);
+    params.set("page", page.toString());
+    router.push(`/admin/orders?${params.toString()}`);
+  };
+
+  const handleKeyDown = (e: any) => {
+    if (e.key === 'Enter') applyFilters();
+  };
 
   const productSlugs = [...new Set(orders.map(o => o.pageSlug).filter(Boolean))];
 
@@ -969,11 +497,12 @@ export default function OrdersTable({ initialOrders = [], user, agents = [], off
         <div className="relative flex-1">
           <Search size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={t("searchPlaceholder")}
             className="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-xl pr-9 pl-4 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none" />
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none min-w-[180px]">
+          className="border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none min-w-[150px]">
           <option value="">{t("allStatuses")}</option>
           {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
@@ -984,6 +513,9 @@ export default function OrdersTable({ initialOrders = [], user, agents = [], off
             {productSlugs.map((p: any) => <option key={p} value={p}>{p}</option>)}
           </select>
         )}
+        <button onClick={applyFilters} className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm">
+          🔍 بحث
+        </button>
         <button onClick={exportCSV} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm">
           <Download size={16} /> {t("exportExcel")}
         </button>
@@ -1184,37 +716,45 @@ export default function OrdersTable({ initialOrders = [], user, agents = [], off
             </tbody>
           </table>
         </div>
-        {filtered.length > 0 && (
+        {totalOrders > 0 && (
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <div>
-              عرض {paginatedOrders.length} من {filtered.length} طلب
+              عرض {paginatedOrders.length} من {totalOrders} طلب
             </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-1">
                 <button 
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                   className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50 font-bold transition-colors">
                   السابق
                 </button>
                 <div className="px-2 flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
-                        currentPage === page 
-                          ? "bg-primary text-white" 
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = currentPage;
+                    if (totalPages <= 5) pageNum = i + 1;
+                    else if (currentPage <= 3) pageNum = i + 1;
+                    else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                    else pageNum = currentPage - 2 + i;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
+                          currentPage === pageNum 
+                            ? "bg-primary text-white" 
+                            : "text-gray-600 hover:bg-gray-100"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
                 </div>
                 <button 
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                   className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 disabled:opacity-50 font-bold transition-colors">
                   التالي
                 </button>
