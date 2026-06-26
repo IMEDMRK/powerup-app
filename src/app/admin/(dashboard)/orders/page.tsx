@@ -7,13 +7,14 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = { title: "الطلبيات" };
 
-export default async function OrdersPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
   const session = await getServerSession(authOptions);
   
-  const page = Number(searchParams?.page) || 1;
-  const q = typeof searchParams?.q === 'string' ? searchParams.q : '';
-  const statusFilter = typeof searchParams?.status === 'string' ? searchParams.status : '';
-  const productFilter = typeof searchParams?.product === 'string' ? searchParams.product : '';
+  const page = Number(resolvedParams?.page) || 1;
+  const q = typeof resolvedParams?.q === 'string' ? resolvedParams.q : '';
+  const statusFilter = typeof resolvedParams?.status === 'string' ? resolvedParams.status : '';
+  const productFilter = typeof resolvedParams?.product === 'string' ? resolvedParams.product : '';
   const pageSize = 10;
 
   let settings: any = null;
