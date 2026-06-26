@@ -116,10 +116,10 @@ export default function SidebarNav({ isAdmin, perms }: { isAdmin: boolean; perms
           <div key={groupIdx} className="space-y-1">
             <button 
               onClick={() => toggleGroup(group.label)}
-              className="w-full flex items-center justify-between px-2 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider hover:text-white transition-colors"
+              className="w-full flex items-center justify-between px-2 py-2 text-sm font-black text-gray-300 uppercase tracking-wider hover:text-white transition-colors"
             >
               <span>{group.label}</span>
-              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
             
             {isExpanded && (
