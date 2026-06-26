@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
       primaryColor: body.primaryColor || "#f97316",
       backgroundColor: body.backgroundColor || "#FFF8F2",
       textColor: body.textColor || "#1a1208",
+      metaPixelIds: body.metaPixelIds || null,
+      tiktokPixelIds: body.tiktokPixelIds || null,
       sectionsOrder: body.sectionsOrder || '["hero","benefits","ingredients","usage","testimonials","faq","order"]',
       offers: {
         create: body.offers || [
