@@ -10,6 +10,7 @@ export async function appendToSheet(order: any) {
 
     if (googleSheets.active && googleSheets.webhookUrl) {
       const payload = {
+        action: "append",
         orderId: order.id,
         createdAt: new Date(order.createdAt || new Date()).toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers' }),
         fullName: order.fullName,
@@ -24,7 +25,8 @@ export async function appendToSheet(order: any) {
         totalPrice: order.totalPrice,
         pageSlug: order.pageSlug || "",
         ttclid: order.ttclid || "",
-        fbclid: order.fbclid || ""
+        fbclid: order.fbclid || "",
+        status: order.status || "جديد"
       };
 
       const res = await fetch(googleSheets.webhookUrl, {
@@ -41,5 +43,37 @@ export async function appendToSheet(order: any) {
     }
   } catch (error) {
     console.error("Google Sheets Error:", error);
+  }
+}
+
+export async function updateSheetStatus(orderId: string, status: string) {
+  try {
+    const settings = await prisma.settings.findUnique({ where: { id: "default" } });
+    if (!settings) return;
+    
+    const appsConfig = (settings.appsConfig as any) || {};
+    const googleSheets = appsConfig.googleSheets || {};
+
+    if (googleSheets.active && googleSheets.webhookUrl) {
+      const payload = {
+        action: "update_status",
+        orderId: orderId,
+        status: status
+      };
+
+      const res = await fetch(googleSheets.webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        console.error("Google Sheets Webhook Update Failed with status:", res.status);
+      }
+    }
+  } catch (error) {
+    console.error("Google Sheets Update Error:", error);
   }
 }
