@@ -46,7 +46,7 @@ export async function appendToSheet(order: any) {
   }
 }
 
-export async function updateSheetStatus(orderId: string, status: string) {
+export async function updateSheetStatus(order: any) {
   try {
     const settings = await prisma.settings.findUnique({ where: { id: "default" } });
     if (!settings) return;
@@ -56,9 +56,23 @@ export async function updateSheetStatus(orderId: string, status: string) {
 
     if (googleSheets.active && googleSheets.webhookUrl) {
       const payload = {
-        action: "update_status",
-        orderId: orderId,
-        status: status
+        action: "update",
+        orderId: order.id,
+        createdAt: new Date(order.createdAt || new Date()).toLocaleString('ar-DZ', { timeZone: 'Africa/Algiers' }),
+        fullName: order.fullName,
+        phone: order.phone,
+        wilaya: order.wilaya,
+        baladiya: order.baladiya,
+        productName: order.productName || (order.pageSlug ? order.pageSlug : ""),
+        offerLabel: order.offerLabel || "",
+        quantity: order.quantity,
+        unitPrice: order.unitPrice,
+        deliveryPrice: order.deliveryPrice,
+        totalPrice: order.totalPrice,
+        pageSlug: order.pageSlug || "",
+        ttclid: order.ttclid || "",
+        fbclid: order.fbclid || "",
+        status: order.status || "جديد"
       };
 
       const res = await fetch(googleSheets.webhookUrl, {
