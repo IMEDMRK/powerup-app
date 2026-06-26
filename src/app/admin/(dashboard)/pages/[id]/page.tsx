@@ -253,7 +253,41 @@ export default function PageEditorPage() {
             </div>
           </div>
 
-
+          {/* ─── Tracking Pixels ─── */}
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4">
+            <p className="text-xs font-black text-purple-700 mb-3 uppercase tracking-wide">🎯 تتبع التحويلات (البيكسل)</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  فيسبوك بيكسل (اختياري)
+                </label>
+                <input
+                  type="text"
+                  value={page.metaPixelIds ?? ""}
+                  onChange={e => setPage({...page, metaPixelIds: e.target.value})}
+                  placeholder="مثال: 1234567, 890123"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  dir="ltr"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">
+                  تيك توك بيكسل (اختياري)
+                </label>
+                <input
+                  type="text"
+                  value={page.tiktokPixelIds ?? ""}
+                  onChange={e => setPage({...page, tiktokPixelIds: e.target.value})}
+                  placeholder="مثال: CABCD123456"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-purple-600 mt-2">
+              يمكنك وضع أكثر من بيكسل مفصولين بفاصلة (<code>,</code>). هذه البيكسلات ستعمل جنباً إلى جنب مع البيكسلات العامة في صفحة الإعدادات.
+            </p>
+          </div>
           {/* ── Video Section Titles ── */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-4">
             <h3 className="font-black text-gray-800 text-sm flex items-center gap-2">
