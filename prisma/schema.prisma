@@ -106,6 +106,10 @@ model LandingPage {
   orderFeaturesTextAlign String? @default("right") 
   orderFeaturesFontSize  String? @default("lg") 
 
+  // Tracking Pixels
+  metaPixelIds        String?  @db.Text
+  tiktokPixelIds      String?  @db.Text
+
   offers        Offer[]
   videos        Video[]
 
