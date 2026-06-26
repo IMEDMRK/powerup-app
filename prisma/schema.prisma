@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Orders ────────────────────────────────────────
+model Order {
+  id          String   @id @default(uuid())
+  fullName    String
+  phone       String
+  wilaya      String
+  baladiya    String
+  status      String   @default("جديد")
+  offerId     String?  // which offer was selected
+  offerLabel  String?  // offer name snapshot
+  quantity    Int      @default(1)
+  initialQuantity Int  @default(1) // الكمية الأصلية التي طلبت من صفحة الهبوط
+  unitPrice   Int      @default(0)
+  deliveryPrice Float?   @default(0) // تكلفة التوصيل
+  productCost   Float?   @default(0) // تكلفة المنتج الأصلية
+  discount      Int      @default(0) // التخفيض
+  totalPrice    Float    @default(0) // الإجمالي (المنتج + التوصيل - التخفيض)
+  pageSlug    String?  // which landing page
+  notes       String?  // ملاحظات الموظف / التوصيل
+  cancelReason String? // سبب الإلغاء
+  refillStatus String? @default("PENDING") // PENDING, REORDERED, NOT_INTERESTED, CALL_LATER
+
+  // Delivery Integration
+  deliveryProvider String?
+  trackingId       String?
+  bordereauUrl     String?
+
+  // Tracking Parameters
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  fbclid      String?
+  ttclid      String?
+  ip          String?
+
+  // Performance Tracking
+  confirmedById String?
+  confirmedBy   User?    @relation("OrderConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedAt   DateTime?
+
+  // Round-Robin Assignment
+  assignedToId  String?
+  assignedTo    User?    @relation("OrderAssignedTo", fields: [assignedToId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+}
+
+// ─── Landing Pages ──────────────────────────────────
+model LandingPage {
+  id            String   @id @default(uuid())
+  slug          String   @unique
+  productName   String
+  productImage  String?
+  headline      String
+  subheadline   String?
+  description   String?
+  salePrice     Int?     // السعر بعد التخفيض
+  originalPrice Int?     // السعر الأصلي قبل التخفيض
+  videoTitle    String?  @default("ماذا يقول الناس عن المنتج؟")
+  videoSubtitle String?  @default("آراء حقيقية من مؤثرين وعملاء جربوا المنتج بأنفسهم")
+  sectionsOrder String   @default("[\"hero\",\"benefits\",\"ingredients\",\"usage\",\"testimonials\",\"faq\",\"order\"]")
+  isActive      Boolean  @default(true)
+  stockCount    Int      @default(0) // عدد العلب المتوفرة في المخزون
+
+  // Theme Colors
+  primaryColor    String?  @default("#f97316")
+  backgroundColor String?  @default("#FFF8F2")
+  textColor       String?  @default("#1a1208")
+
+  // Scarcity & Social Proof
+  scarcityActive      Boolean  @default(false)
+  scarcityText        String?  @default("بقي القليل في المخزن!")
+  scarcityColor       String?  @default("#fee2e2")
+  timerActive         Boolean  @default(false)
+  timerMinutes        Int      @default(15)
+  timerColor          String?  @default("#fef08a")
+  socialProofActive   Boolean  @default(false)
+  socialProofMessages String?  @default("أمين من قسنطينة,سارة من وهران,محمد من العاصمة")
+  socialProofColor    String?  @default("#e0e7ff")
+
+  // Dynamic Content Sections (Stored as JSON string)
+  benefitsJson        String?  @db.Text
+  ingredientsJson     String?  @db.Text
+  usageJson           String?  @db.Text
+  faqJson             String?  @db.Text
+  testimonialsJson    String?  @db.Text
+
+  // Order Section Details
+  orderBoxDeliveryText String? @default("حتى باب المنزل 🚚")
+  orderBoxPaymentText  String? @default("عند الاستلام 💵")
+  orderFeaturesJson    String? @db.Text 
+  orderFeaturesTextAlign String? @default("right") 
+  orderFeaturesFontSize  String? @default("lg") 
+
+  offers        Offer[]
+  videos        Video[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Expenses Tracker ─────────────────────────────────
+model Expense {
+  id          String   @id @default(cuid())
+  amount      Float
+  category    String
+  description String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Offers / Pricing ───────────────────────────────
+model Offer {
+  id            String      @id @default(uuid())
+  pageId        String
+  page          LandingPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  label         String
+  quantity      Int         @default(1)
+  originalPrice Int         @default(0)
+  salePrice     Int         @default(0)
+  badge         String?
+  isDefault     Boolean     @default(false)
+  freeShipping  Boolean     @default(false)
+  sortOrder     Int         @default(0)
+}
+
+// ─── Videos ─────────────────────────────────────────
+model Video {
+  id          String      @id @default(uuid())
+  pageId      String
+  page        LandingPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  title       String
+  url         String      // YouTube / TikTok / any iframe-embeddable URL
+  description String?
+  sortOrder   Int         @default(0)
+}
+
+// ─── Wilaya Delivery Pricing ────────────────────────
+model WilayaDelivery {
+  id            String   @id @default(uuid())
+  wilayaCode    Int      @unique
+  wilayaName    String
+  deliveryPrice Int      @default(0)
+  isEnabled     Boolean  @default(true)
+  estimatedDays String   @default("24-48 ساعة")
+
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Settings ───────────────────────────────────────
+model Settings {
+  id                String   @id @default("default")
+  metaPixelId       String?
+  metaAccessToken   String?
+  tiktokPixelId     String?
+  googleAnalyticsId String?
+  deliveryConfig    Json?    // Array of configured delivery providers (Yalidine, EcoTrack, etc.)
+  adminUsername     String?
+  adminPasswordHash String?
+  updatedAt         DateTime @updatedAt
+}
+
+// ─── Team / Users ─────────────────────────────────────
+enum Role {
+  ADMIN
+  AGENT
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  password    String
+  name        String
+  role        Role     @default(AGENT)
+  isActive               Boolean  @default(true)
+  commissionPerDelivered Float    @default(0) // عمولة الموظف عن كل طلبية مستلمة
+  upsellCommission       Float    @default(0) // العمولة الإضافية عن كل علبة إضافية (Upsell)
+  dailyGoal              Int      @default(20) // الهدف اليومي للتأكيد
+  permissions            Json?    // Stores specific booleans: canViewStats, canManageDelivery, canManagePages, canManageSettings
+  
+  ordersConfirmed Order[] @relation("OrderConfirmedBy")
+  ordersAssigned  Order[] @relation("OrderAssignedTo")
+  reports         WorkerReport[]
+  notifications   Notification[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Delivery Payments (Versements) ─────────────────────
+model Versement {
+  id              String   @id @default(cuid())
+  date            DateTime // تاريخ الاستلام
+  deliveryCompany String   @default("Yalidine")
+  totalReceived   Float    // الصافي الذي دخل الحساب
+  deliveryFees    Float    @default(0) // كم أخذت الشركة كحق التوصيل
+  returnFees      Float    @default(0) // كم أخذت الشركة كحق الروتور
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Daily Performance (Ad Spend & Sales Tracker) ────────
+model DailyPerformance {
+  id          String   @id @default(cuid())
+  monthYear   String   // e.g., "2026-06"
+  day         Int      // e.g., 1 to 31
+  adSpend     Float    @default(0) // in USD
+  leads       Int      @default(0)
+  confirmed   Int      @default(0)
+  delivered   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([monthYear, day])
+}
+
+// ─── Tasks / Kanban ─────────────────────────────────
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("NEW") // NEW, IN_PROGRESS, DONE
+  assignee    String?  // Video Editor, Media Buyer, Designer, Photographer, etc.
+  deadline    DateTime?
+  subTasks    Json?    @default("[]") // [{ id, title, isDone }]
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Worker Reports ─────────────────────────────────
+model WorkerReport {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id])
+  date                DateTime @default(now())
+  confirmedOrders     Int      @default(0)
+  deliveredOrders     Int      @default(0)
+  upsells             Int      @default(0)
+  commonObjections    String?  @db.Text
+  commonQuestions     String?  @db.Text
+  notes               String?  @db.Text
+  adminReply          String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ─── Anonymous Feedback ─────────────────────────────
+model AnonymousFeedback {
+  id          String   @id @default(cuid())
+  message     String   @db.Text
+  adminReply  String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+// ─── Notifications ──────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("INFO") // ORDER, GOAL, REPORT, ALERT
+  userId    String?  // null if it's for all admins
+  isAdmin   Boolean  @default(false)  // true if this should be seen by admins
+  isRead    Boolean  @default(false)
+  link      String?  // optional URL to redirect on click
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
