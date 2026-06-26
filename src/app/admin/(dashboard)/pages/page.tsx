@@ -7,7 +7,7 @@ export default function PagesListPage() {
   const [pages, setPages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [newPage, setNewPage] = useState({ productName: "", slug: "", headline: "" });
+  const [newPage, setNewPage] = useState({ productName: "", slug: "", headline: "", metaPixelIds: "", tiktokPixelIds: "" });
   const [showForm, setShowForm] = useState(false);
 
   const fetchPages = async () => {
@@ -26,7 +26,7 @@ export default function PagesListPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newPage),
     });
-    setNewPage({ productName: "", slug: "", headline: "" });
+    setNewPage({ productName: "", slug: "", headline: "", metaPixelIds: "", tiktokPixelIds: "" });
     setShowForm(false);
     setCreating(false);
     fetchPages();
@@ -85,6 +85,16 @@ export default function PagesListPage() {
               <label className="block text-xs font-bold text-gray-600 mb-1">العنوان الرئيسي</label>
               <input required value={newPage.headline} onChange={e => setNewPage({...newPage, headline: e.target.value})}
                 placeholder="عزز وزنك مع POWER UP" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">فيسبوك بيكسل (اختياري)</label>
+              <input value={newPage.metaPixelIds} onChange={e => setNewPage({...newPage, metaPixelIds: e.target.value})}
+                placeholder="123456, 789012" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" dir="ltr" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-600 mb-1">تيك توك بيكسل (اختياري)</label>
+              <input value={newPage.tiktokPixelIds} onChange={e => setNewPage({...newPage, tiktokPixelIds: e.target.value})}
+                placeholder="CABCDEF1234" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none" dir="ltr" />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
