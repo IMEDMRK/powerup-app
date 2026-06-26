@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import DynamicLandingPage from "@/components/landing/DynamicLandingPage";
 import ScarcityWidgets from "@/components/store/ScarcityWidgets";
+import PagePixels from "@/components/PagePixels";
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export default async function LandingPage({ params }: Props) {
 
   return (
     <>
+      <PagePixels page={page} />
       <ScarcityWidgets 
         timerActive={page.timerActive}
         timerMinutes={page.timerMinutes}
