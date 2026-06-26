@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { updateSheetStatus } from "@/lib/googleSheets";
 
 export async function PATCH(
   req: NextRequest,
@@ -115,6 +116,10 @@ export async function PATCH(
     where: { id },
     data: updateData,
   });
+
+  if (body.status && body.status !== existingOrder.status) {
+    updateSheetStatus(id, body.status).catch(e => console.error("Sheet update error:", e));
+  }
 
   return NextResponse.json(updated);
 }
