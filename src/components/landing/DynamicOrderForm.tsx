@@ -140,7 +140,7 @@ export default function DynamicOrderForm({ page }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (res.ok) router.push("/thankyou");
+      if (res.ok) router.push(`/thankyou?slug=${page.slug}`);
       else alert("حدث خطأ، يرجى المحاولة مرة أخرى.");
     } catch { alert("حدث خطأ."); }
     finally { setLoading(false); }
