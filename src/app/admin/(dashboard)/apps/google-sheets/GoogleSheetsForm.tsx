@@ -13,21 +13,25 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var action = data.action || "append";
     
-    if (action === "update_status") {
+    if (action === "update") {
       var orderIdToFind = data.orderId;
-      var newStatus = data.status;
-      
       var dataRange = sheet.getDataRange();
       var values = dataRange.getValues();
       
-      // البحث عن رقم الطلبية وتحديث حالتها في العمود 16 (P)
+      var newRow = [
+        data.orderId || "", data.createdAt || "", data.fullName || "", data.phone || "", 
+        data.wilaya || "", data.baladiya || "", data.productName || "", data.offerLabel || "", 
+        data.quantity || "", data.unitPrice || "", data.deliveryPrice || "", data.totalPrice || "", 
+        data.pageSlug || "", data.ttclid || "", data.fbclid || "", data.status || "جديد"
+      ];
+      
       for (var i = 1; i < values.length; i++) {
         if (values[i][0] == orderIdToFind) {
-          sheet.getRange(i + 1, 16).setValue(newStatus);
+          sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
           return ContentService.createTextOutput(JSON.stringify({ "status": "success", "message": "updated" })).setMimeType(ContentService.MimeType.JSON);
         }
       }
-      return ContentService.createTextOutput(JSON.stringify({ "status": "not_found" })).setMimeType(ContentService.MimeType.JSON);
+      // If not found, it will continue to append block below
     }
     
     // إذا كانت هذه أول مرة، نقوم بإضافة العناوين
