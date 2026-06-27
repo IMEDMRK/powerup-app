@@ -35,9 +35,15 @@ export async function PATCH(
   const existingOrder = await prisma.order.findUnique({ where: { id } });
   if (!existingOrder) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (existingOrder.status !== updateData.status) {
+  if (existingOrder.status !== updateData.status && updateData.status) {
     if (updateData.status === "مستلمة") {
       updateData.deliveredAt = new Date();
+    } else if (updateData.status === "ملغاة") {
+      updateData.cancelledAt = new Date();
+    } else if (updateData.status === "روتور" || updateData.status === "مسترجعة") {
+      updateData.returnedAt = new Date();
+    } else if (updateData.status === "مؤكدة" || updateData.status.startsWith("تم الاتصال")) {
+      updateData.confirmedAt = new Date();
     }
   }
 
