@@ -5,7 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
 } from "recharts";
-import { TrendingUp, Package, CheckCircle, Truck, XCircle, DollarSign } from "lucide-react";
+import { TrendingUp, Package, CheckCircle, Truck, XCircle, DollarSign, ShoppingCart, Clock } from "lucide-react";
 
 const COLORS = ["#f97316", "#22c55e", "#3b82f6", "#ef4444", "#a855f7", "#eab308"];
 
