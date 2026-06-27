@@ -42,16 +42,37 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     if (userRole === "ADMIN") {
       const rawAgents = await prisma.user.findMany({
         where: { role: "AGENT" },
-        select: { 
-          id: true, name: true, username: true,
-          ordersAssigned: { select: { id: true } },
-          ordersConfirmed: { select: { id: true, status: true } }
-        }
+        select: { id: true, name: true, username: true }
       });
+      
+      const agentIds = rawAgents.map(a => a.id);
+      
+      const [assignedCounts, confirmedCounts, deliveredCounts] = await Promise.all([
+        prisma.order.groupBy({
+          by: ['assignedToId'],
+          where: { assignedToId: { in: agentIds } },
+          _count: { id: true }
+        }),
+        prisma.order.groupBy({
+          by: ['confirmedById'],
+          where: { confirmedById: { in: agentIds } },
+          _count: { id: true }
+        }),
+        prisma.order.groupBy({
+          by: ['confirmedById'],
+          where: { confirmedById: { in: agentIds }, status: "مستلمة" },
+          _count: { id: true }
+        })
+      ]);
+
+      const assignedMap = Object.fromEntries(assignedCounts.map(a => [a.assignedToId, a._count.id]));
+      const confirmedMap = Object.fromEntries(confirmedCounts.map(c => [c.confirmedById, c._count.id]));
+      const deliveredMap = Object.fromEntries(deliveredCounts.map(d => [d.confirmedById, d._count.id]));
+
       agents = rawAgents.map(a => {
-        const assigned = a.ordersAssigned?.length || 0;
-        const confirmed = a.ordersConfirmed?.length || 0;
-        const delivered = a.ordersConfirmed?.filter((o: any) => o.status === "مستلمة").length || 0;
+        const assigned = assignedMap[a.id] || 0;
+        const confirmed = confirmedMap[a.id] || 0;
+        const delivered = deliveredMap[a.id] || 0;
         const confRate = assigned > 0 ? (confirmed / assigned) * 100 : 0;
         const delRate = confirmed > 0 ? (delivered / confirmed) * 100 : 0;
         return {
@@ -107,9 +128,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     }
 
     // Apply Filters for table display
+    let filterWhereClause = { ...whereClause };
     if (q) {
-      whereClause = {
-        ...whereClause,
+      filterWhereClause = {
+        ...filterWhereClause,
         OR: [
           { fullName: { contains: q } },
           { phone: { contains: q } },
@@ -118,46 +140,42 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       };
     }
     if (statusFilter) {
-      whereClause.status = statusFilter;
+      filterWhereClause.status = statusFilter;
     }
     if (productFilter) {
-      whereClause.pageSlug = productFilter;
+      filterWhereClause.pageSlug = productFilter;
     }
 
-    totalOrders = await prisma.order.count({ where: whereClause });
+    // Fetch orders and total concurrently
+    const [totalOrdersCount, fetchedOrders] = await Promise.all([
+      prisma.order.count({ where: filterWhereClause }),
+      prisma.order.findMany({
+        where: filterWhereClause,
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true, fullName: true, phone: true, wilaya: true, baladiya: true,
+          status: true, offerId: true, offerLabel: true, quantity: true,
+          unitPrice: true, deliveryPrice: true, totalPrice: true, pageSlug: true,
+          deliveryProvider: true, trackingId: true, bordereauUrl: true,
+          assignedTo: { select: { name: true } }, createdAt: true, updatedAt: true,
+        },
+      })
+    ]);
 
-    orders = await prisma.order.findMany({
-      where: whereClause,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        wilaya: true,
-        baladiya: true,
-        status: true,
-        offerId: true,
-        offerLabel: true,
-        quantity: true,
-        unitPrice: true,
-        deliveryPrice: true,
-        totalPrice: true,
-        pageSlug: true,
-        deliveryProvider: true,
-        trackingId: true,
-        bordereauUrl: true,
-        assignedTo: { select: { name: true } },
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    totalOrders = totalOrdersCount;
+    orders = fetchedOrders;
 
     const pendingStatuses = ["جديدة", "جديد", "غير مكتملة", "تم الاتصال للمرة الأولى", "تم الاتصال للمرة الثانية", "تم الاتصال للمرة الثالثة", "الزبون لا يرد"];
+    const phonesOnPage = orders.map(o => o.phone).filter(Boolean);
+    const historicalOrders = await prisma.order.findMany({
+      where: { phone: { in: phonesOnPage } },
+      select: { id: true, phone: true, status: true }
+    });
+
     const phoneHistory = new Map();
-    for (const o of orders) {
-      if (!o.phone) continue;
+    for (const o of historicalOrders) {
       if (!phoneHistory.has(o.phone)) phoneHistory.set(o.phone, []);
       phoneHistory.get(o.phone).push(o);
     }
@@ -166,7 +184,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       const history = phoneHistory.get(o.phone) || [];
       const others = history.filter((other: any) => other.id !== o.id);
       
-      const hasRetour = others.some((other: any) => other.status === "روتور");
+      const hasRetour = others.some((other: any) => other.status === "روتور" || other.status === "مسترجعة");
       const hasCancelled = others.some((other: any) => other.status === "ملغاة");
       const isDuplicate = others.some((other: any) => pendingStatuses.includes(other.status) && pendingStatuses.includes(o.status));
 
