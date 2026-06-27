@@ -105,7 +105,7 @@ export default function OrdersTable({
   const [filterStatus, setFilterStatus] = useState(currentFilterStatus);
   const [filterProduct, setFilterProduct] = useState(currentFilterProduct);
   
-  useEffect(() => { setOrders(initialOrders); }, [initialOrders]);
+  useEffect(() => { setOrders(initialOrders); setIsNavigating(false); }, [initialOrders]);
   useEffect(() => {
     setSearch(currentSearch);
     setFilterStatus(currentFilterStatus);
@@ -113,6 +113,7 @@ export default function OrdersTable({
   }, [currentSearch, currentFilterStatus, currentFilterProduct]);
 
   const [editOrder, setEditOrder] = useState<any | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sendingBulk, setSendingBulk] = useState(false);
@@ -152,6 +153,7 @@ export default function OrdersTable({
   const totalPages = Math.ceil(totalOrders / pageSize) || 1;
 
   const applyFilters = () => {
+    setIsNavigating(true);
     const params = new URLSearchParams();
     if (search) params.set("q", search);
     if (filterStatus) params.set("status", filterStatus);
@@ -161,6 +163,7 @@ export default function OrdersTable({
   };
 
   const handlePageChange = (page: number) => {
+    setIsNavigating(true);
     const params = new URLSearchParams();
     if (currentSearch) params.set("q", currentSearch);
     if (currentFilterStatus) params.set("status", currentFilterStatus);
@@ -525,7 +528,7 @@ export default function OrdersTable({
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-right">
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wide">
@@ -715,6 +718,12 @@ export default function OrdersTable({
               )}
             </tbody>
           </table>
+          {isNavigating && (
+            <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+              <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="mt-2 font-bold text-primary text-sm">جاري التحميل...</div>
+            </div>
+          )}
         </div>
         {totalOrders > 0 && (
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
