@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   // 1. Orders per day (based on createdAt)
   const orders = await prisma.order.findMany({
     where,
-    select: { createdAt: true, status: true, totalPrice: true, quantity: true },
+    select: { createdAt: true, status: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -32,12 +32,23 @@ export async function GET(req: NextRequest) {
     const day = o.createdAt.toISOString().slice(0, 10);
     if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
     dayMap[day].total++;
-    if (o.status === "مؤكدة" || o.status === "تم الاتصال للمرة الأولى" || o.status === "تم الاتصال للمرة الثانية") dayMap[day].confirmed++;
-    if (o.status === "ملغاة") dayMap[day].cancelled++;
-    if (o.status === "روتور" || o.status === "مسترجعة") dayMap[day].returned++;
   }
 
-  // 1b. Delivered orders per day (based on deliveredAt)
+  // 2. Confirmed (based on confirmedAt)
+  const confirmedWhere = Object.keys(dateFilter).length > 0 ? { confirmedAt: dateFilter } : { confirmedAt: { not: null } };
+  const confirmedOrdersInRange = await prisma.order.findMany({
+    where: confirmedWhere,
+    select: { confirmedAt: true },
+  });
+  
+  for (const o of confirmedOrdersInRange) {
+    if (!o.confirmedAt) continue;
+    const day = o.confirmedAt.toISOString().slice(0, 10);
+    if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
+    dayMap[day].confirmed++;
+  }
+
+  // 3. Delivered (based on deliveredAt)
   const deliveredWhere = Object.keys(dateFilter).length > 0 ? { deliveredAt: dateFilter, status: "مستلمة" } : { status: "مستلمة" };
   const deliveredOrdersInRange = await prisma.order.findMany({
     where: deliveredWhere,
@@ -52,13 +63,44 @@ export async function GET(req: NextRequest) {
     dayMap[day].revenue += o.totalPrice || 0;
   }
 
-  const dailyData = Object.entries(dayMap).map(([date, v]) => ({
-    date,
-    label: new Date(date).toLocaleDateString("ar-DZ", { month: "short", day: "numeric" }),
-    ...v,
-  }));
+  // 4. Cancelled (based on cancelledAt)
+  const cancelledWhere = Object.keys(dateFilter).length > 0 ? { cancelledAt: dateFilter, status: "ملغاة" } : { status: "ملغاة" };
+  const cancelledOrdersInRange = await prisma.order.findMany({
+    where: cancelledWhere,
+    select: { cancelledAt: true },
+  });
 
-  // 2. Status distribution
+  for (const o of cancelledOrdersInRange) {
+    if (!o.cancelledAt) continue;
+    const day = o.cancelledAt.toISOString().slice(0, 10);
+    if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
+    dayMap[day].cancelled++;
+  }
+
+  // 5. Returned (based on returnedAt)
+  const returnedWhere = Object.keys(dateFilter).length > 0 ? { returnedAt: dateFilter, status: { in: ["روتور", "مسترجعة"] } } : { status: { in: ["روتور", "مسترجعة"] } };
+  const returnedOrdersInRange = await prisma.order.findMany({
+    where: returnedWhere,
+    select: { returnedAt: true },
+  });
+
+  for (const o of returnedOrdersInRange) {
+    if (!o.returnedAt) continue;
+    const day = o.returnedAt.toISOString().slice(0, 10);
+    if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
+    dayMap[day].returned++;
+  }
+
+  // Sort dayMap keys
+  const dailyData = Object.entries(dayMap)
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .map(([date, v]) => ({
+      date,
+      label: new Date(date).toLocaleDateString("ar-DZ", { month: "short", day: "numeric" }),
+      ...v,
+    }));
+
+  // Status distribution
   const statusCounts = await prisma.order.groupBy({
     by: ["status"],
     where,
@@ -70,14 +112,12 @@ export async function GET(req: NextRequest) {
     value: s._count.id,
   }));
 
-  // 3. Summary totals
+  // Summary totals
   const total = orders.length;
   const newOrders = orders.filter(o => o.status === "جديد" || o.status === "جديدة").length;
-  const confirmed = orders.filter(o =>
-    ["مؤكدة", "تم الاتصال للمرة الأولى", "تم الاتصال للمرة الثانية", "تم الاتصال للمرة الثالثة"].includes(o.status)
-  ).length;
+  const confirmed = confirmedOrdersInRange.length;
   const delivered = deliveredOrdersInRange.length;
-  const cancelled = orders.filter(o => o.status === "ملغاة").length;
+  const cancelled = cancelledOrdersInRange.length;
   const revenue = deliveredOrdersInRange.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const totalProductCost = deliveredOrdersInRange.reduce((sum, o) => sum + ((o.productCost || 0) * (o.quantity || 1)), 0);
   const totalDeliveryCost = deliveredOrdersInRange.reduce((sum, o) => sum + (o.deliveryPrice || 0), 0);
