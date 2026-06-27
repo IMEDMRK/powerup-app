@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
     if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
     dayMap[day].total++;
     dayMap[day].revenue += o.totalPrice || 0;
-    if (o.status === "مؤكد" || o.status === "تم الاتصال للمرة الأولى" || o.status === "تم الاتصال للمرة الثانية") dayMap[day].confirmed++;
-    if (o.status === "تم التسليم") dayMap[day].delivered++;
+    if (o.status === "مؤكدة" || o.status === "تم الاتصال للمرة الأولى" || o.status === "تم الاتصال للمرة الثانية") dayMap[day].confirmed++;
+    if (o.status === "مستلمة") dayMap[day].delivered++;
     if (o.status === "ملغاة") dayMap[day].cancelled++;
     if (o.status === "روتور" || o.status === "مسترجعة") dayMap[day].returned++;
   }
@@ -60,13 +60,13 @@ export async function GET(req: NextRequest) {
 
   // 3. Summary totals
   const total = orders.length;
-  const newOrders = orders.filter(o => o.status === "جديد").length;
+  const newOrders = orders.filter(o => o.status === "جديد" || o.status === "جديدة").length;
   const confirmed = orders.filter(o =>
-    ["مؤكد", "تم الاتصال للمرة الأولى", "تم الاتصال للمرة الثانية", "تم الاتصال للمرة الثالثة"].includes(o.status)
+    ["مؤكدة", "تم الاتصال للمرة الأولى", "تم الاتصال للمرة الثانية", "تم الاتصال للمرة الثالثة"].includes(o.status)
   ).length;
-  const delivered = orders.filter(o => o.status === "تم التسليم").length;
+  const delivered = orders.filter(o => o.status === "مستلمة").length;
   const cancelled = orders.filter(o => o.status === "ملغاة").length;
-  const deliveredOrders = orders.filter(o => o.status === "تم التسليم");
+  const deliveredOrders = orders.filter(o => o.status === "مستلمة");
   const revenue = deliveredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
   const totalProductCost = deliveredOrders.reduce((sum, o) => sum + ((o.productCost || 0) * (o.quantity || 1)), 0);
   const totalDeliveryCost = deliveredOrders.reduce((sum, o) => sum + (o.deliveryPrice || 0), 0);
