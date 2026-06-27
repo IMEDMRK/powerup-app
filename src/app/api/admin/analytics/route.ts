@@ -133,7 +133,8 @@ export async function GET(req: NextRequest) {
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const staleOrdersCount = await prisma.order.count({
     where: {
-      status: "جديد",
+      status: { in: ["جديد", "جديدة"] },
+      isDeleted: false,
       createdAt: { lt: twentyFourHoursAgo }
     }
   });
