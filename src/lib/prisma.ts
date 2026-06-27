@@ -6,7 +6,21 @@ declare global {
 }
 
 function createPrismaClient() {
-  return new PrismaClient({ log: ['query'] });
+  let dbUrl = process.env.DATABASE_URL || "";
+  
+  // Auto-fix for Supabase Connection Limits
+  if (dbUrl.includes("supabase.com") && !dbUrl.includes("pgbouncer=true")) {
+    dbUrl = dbUrl.replace(":5432/", ":6543/");
+    dbUrl += dbUrl.includes("?") ? "&pgbouncer=true" : "?pgbouncer=true";
+  }
+
+  return new PrismaClient({
+    datasources: {
+      db: {
+        url: dbUrl,
+      },
+    },
+  });
 }
 
 export const prisma = global.prismaInstance ?? createPrismaClient();
