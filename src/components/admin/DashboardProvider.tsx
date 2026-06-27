@@ -8,6 +8,8 @@ interface DashboardContextType {
   setLang: (lang: Language) => void;
   isDark: boolean;
   setIsDark: (dark: boolean) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (open: boolean) => void;
   t: (key: any) => string;
 }
 
@@ -16,6 +18,7 @@ const DashboardContext = createContext<DashboardContextType | null>(null);
 export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>("ar");
   const [isDark, setIsDark] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <DashboardContext.Provider value={{ lang, setLang, isDark, setIsDark, t }}>
+    <DashboardContext.Provider value={{ lang, setLang, isDark, setIsDark, isMobileMenuOpen, setIsMobileMenuOpen, t }}>
       <div 
         className={`${isDark ? "dark" : ""} min-h-screen bg-white dark:bg-gray-950 transition-colors duration-200`}
         dir={lang === "ar" ? "rtl" : "ltr"}
