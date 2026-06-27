@@ -20,24 +20,36 @@ export async function GET(req: NextRequest) {
 
   const where = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
-  // 1. Orders per day (last 14 days or filtered range)
+  // 1. Orders per day (based on createdAt)
   const orders = await prisma.order.findMany({
     where,
-    select: { createdAt: true, status: true, totalPrice: true, productCost: true, deliveryPrice: true, quantity: true },
+    select: { createdAt: true, status: true, totalPrice: true, quantity: true },
     orderBy: { createdAt: "asc" },
   });
 
-  // Group by day
   const dayMap: Record<string, { total: number; confirmed: number; delivered: number; cancelled: number; returned: number; revenue: number }> = {};
   for (const o of orders) {
     const day = o.createdAt.toISOString().slice(0, 10);
     if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
     dayMap[day].total++;
-    dayMap[day].revenue += o.totalPrice || 0;
     if (o.status === "مؤكدة" || o.status === "تم الاتصال للمرة الأولى" || o.status === "تم الاتصال للمرة الثانية") dayMap[day].confirmed++;
-    if (o.status === "مستلمة") dayMap[day].delivered++;
     if (o.status === "ملغاة") dayMap[day].cancelled++;
     if (o.status === "روتور" || o.status === "مسترجعة") dayMap[day].returned++;
+  }
+
+  // 1b. Delivered orders per day (based on deliveredAt)
+  const deliveredWhere = Object.keys(dateFilter).length > 0 ? { deliveredAt: dateFilter, status: "مستلمة" } : { status: "مستلمة" };
+  const deliveredOrdersInRange = await prisma.order.findMany({
+    where: deliveredWhere,
+    select: { deliveredAt: true, totalPrice: true, productCost: true, deliveryPrice: true, quantity: true },
+  });
+
+  for (const o of deliveredOrdersInRange) {
+    if (!o.deliveredAt) continue;
+    const day = o.deliveredAt.toISOString().slice(0, 10);
+    if (!dayMap[day]) dayMap[day] = { total: 0, confirmed: 0, delivered: 0, cancelled: 0, returned: 0, revenue: 0 };
+    dayMap[day].delivered++;
+    dayMap[day].revenue += o.totalPrice || 0;
   }
 
   const dailyData = Object.entries(dayMap).map(([date, v]) => ({
@@ -64,12 +76,11 @@ export async function GET(req: NextRequest) {
   const confirmed = orders.filter(o =>
     ["مؤكدة", "تم الاتصال للمرة الأولى", "تم الاتصال للمرة الثانية", "تم الاتصال للمرة الثالثة"].includes(o.status)
   ).length;
-  const delivered = orders.filter(o => o.status === "مستلمة").length;
+  const delivered = deliveredOrdersInRange.length;
   const cancelled = orders.filter(o => o.status === "ملغاة").length;
-  const deliveredOrders = orders.filter(o => o.status === "مستلمة");
-  const revenue = deliveredOrders.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
-  const totalProductCost = deliveredOrders.reduce((sum, o) => sum + ((o.productCost || 0) * (o.quantity || 1)), 0);
-  const totalDeliveryCost = deliveredOrders.reduce((sum, o) => sum + (o.deliveryPrice || 0), 0);
+  const revenue = deliveredOrdersInRange.reduce((sum, o) => sum + (o.totalPrice || 0), 0);
+  const totalProductCost = deliveredOrdersInRange.reduce((sum, o) => sum + ((o.productCost || 0) * (o.quantity || 1)), 0);
+  const totalDeliveryCost = deliveredOrdersInRange.reduce((sum, o) => sum + (o.deliveryPrice || 0), 0);
 
   const expenses = await prisma.expense.findMany({
     where: Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {}
