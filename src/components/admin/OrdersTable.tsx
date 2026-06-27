@@ -793,36 +793,8 @@ export default function OrdersTable({
           )}
         </div>
 
-        {/* Loading Overlay */} : <span className="text-gray-300">—</span>;
-                        })()}
-                      </td>
-                    )}
-                    {/* Status */}
-                    <td className="px-4 py-3 text-center">
-                      <select value={order.status}
-                        onChange={e => handleStatusQuick(order.id, e.target.value)}
-                        className={`text-xs font-bold px-2.5 py-1.5 rounded-full border appearance-none cursor-pointer outline-none ${getStatusStyle(order.status)}`}>
-                        {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                      </select>
-                    </td>
-                    {/* Date */}
-                    <td className="px-4 py-3 text-center text-gray-400 text-xs whitespace-nowrap">
-                      {new Date(order.createdAt).toLocaleDateString("ar-DZ")}
-                      <div>{new Date(order.createdAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" })}</div>
-                    </td>
-                    {/* Edit */}
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={() => setEditOrder(order)}
-                        className="opacity-0 group-hover:opacity-100 text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary-dark transition-all">
-                        تعديل
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          {isNavigating && (
+        {/* Loading Overlay */}
+        {isNavigating && (
             <div className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
               <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               <div className="mt-2 font-bold text-primary text-sm">جاري التحميل...</div>
