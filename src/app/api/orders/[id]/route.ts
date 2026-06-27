@@ -35,6 +35,12 @@ export async function PATCH(
   const existingOrder = await prisma.order.findUnique({ where: { id } });
   if (!existingOrder) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  if (existingOrder.status !== updateData.status) {
+    if (updateData.status === "مستلمة") {
+      updateData.deliveredAt = new Date();
+    }
+  }
+
   // Inventory Management Logic
   if (body.status && existingOrder.status !== body.status) {
     const qty = body.quantity !== undefined ? Number(body.quantity) : existingOrder.quantity;
