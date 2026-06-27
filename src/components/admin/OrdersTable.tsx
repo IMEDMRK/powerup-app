@@ -800,7 +800,6 @@ export default function OrdersTable({
               <div className="mt-2 font-bold text-primary text-sm">جاري التحميل...</div>
             </div>
           )}
-        </div>
         {totalOrders > 0 && (
           <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
             <div>
