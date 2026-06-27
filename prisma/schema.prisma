@@ -49,6 +49,7 @@ model Order {
   confirmedById String?
   confirmedBy   User?    @relation("OrderConfirmedBy", fields: [confirmedById], references: [id])
   confirmedAt   DateTime?
+  deliveredAt   DateTime?
 
   // Round-Robin Assignment
   assignedToId  String?
