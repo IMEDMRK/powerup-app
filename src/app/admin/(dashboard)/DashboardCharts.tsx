@@ -85,9 +85,9 @@ export default function DashboardCharts() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const kpis = data ? [
-    { label: "إجمالي الطلبات",  value: data.total,     icon: Package,      bgClass: "bg-blue-500", shadowClass: "shadow-blue-500/40" },
-    { label: "طلبات جديدة",    value: data.newOrders, icon: Truck,        bgClass: "bg-orange-500", shadowClass: "shadow-orange-500/40" },
-    { label: "طلبات مؤكدة",    value: data.confirmed,  icon: CheckCircle,  bgClass: "bg-purple-500", shadowClass: "shadow-purple-500/40" },
+    { label: "إجمالي الطلبات الوافدة", value: data.total, icon: ShoppingCart, bgClass: "bg-blue-500", shadowClass: "shadow-blue-500/40" },
+    { label: "طلبات قيد المعالجة", value: data.newOrders, icon: Clock, bgClass: "bg-orange-500", shadowClass: "shadow-orange-500/40" },
+    { label: "تم التأكيد",    value: data.confirmed,  icon: CheckCircle,  bgClass: "bg-purple-500", shadowClass: "shadow-purple-500/40" },
     { label: "تم التسليم",     value: data.delivered,  icon: CheckCircle,  bgClass: "bg-emerald-500", shadowClass: "shadow-emerald-500/40" },
     { label: "رقم الأعمال",    value: data.revenue.toLocaleString() + " دج", icon: DollarSign, bgClass: "bg-yellow-400", shadowClass: "shadow-yellow-400/40" },
   ] : [];
