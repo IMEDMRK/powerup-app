@@ -527,9 +527,11 @@ export default function OrdersTable({
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table & Cards Container */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative">
-        <div className="overflow-x-auto">
+        
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-sm text-right">
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wide">
               <tr>
@@ -690,6 +692,108 @@ export default function OrdersTable({
                               )}
                             </div>
                           ) : <span className="text-gray-300">—</span>;
+                        })()}
+                      </td>
+                    )}
+                    {/* Status */}
+                    <td className="px-4 py-3 text-center">
+                      <select value={order.status}
+                        onChange={e => handleStatusQuick(order.id, e.target.value)}
+                        className={`text-xs font-bold px-2.5 py-1.5 rounded-full border appearance-none cursor-pointer outline-none ${getStatusStyle(order.status)}`}>
+                        {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
+                    </td>
+                    {/* Date */}
+                    <td className="px-4 py-3 text-center text-gray-400 text-xs whitespace-nowrap">
+                      {new Date(order.createdAt).toLocaleDateString("ar-DZ")}
+                      <div>{new Date(order.createdAt).toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit" })}</div>
+                    </td>
+                    {/* Edit */}
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => setEditOrder(order)}
+                        className="opacity-0 group-hover:opacity-100 text-xs font-bold bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary-dark transition-all">
+                        تعديل
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="lg:hidden p-4 flex flex-col gap-4">
+          {paginatedOrders.length === 0 ? (
+            <div className="py-16 text-center text-gray-400">لا توجد طلبات مطابقة</div>
+          ) : (
+            paginatedOrders.map((order: any) => (
+              <div key={order.id} className={`bg-white dark:bg-gray-800 border rounded-2xl p-4 shadow-sm relative ${selected.has(order.id) ? 'border-primary ring-1 ring-primary' : 'border-gray-100 dark:border-gray-700'} ${getRowBg(order.status)}`}>
+                {/* Header: Select + Status + Options */}
+                <div className="flex justify-between items-start mb-3 border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-3">
+                    <input type="checkbox" className="w-5 h-5 accent-primary rounded"
+                      checked={selected.has(order.id)}
+                      onChange={() => toggleOne(order.id)} />
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-400 font-mono">#{order.id.slice(0, 6)}</span>
+                      <span className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString("ar-DZ")}</span>
+                    </div>
+                  </div>
+                  <select value={order.status}
+                    onChange={e => handleStatusQuick(order.id, e.target.value)}
+                    className={`text-xs font-bold px-2 py-1 rounded-lg border appearance-none cursor-pointer outline-none max-w-[120px] ${getStatusStyle(order.status)}`}>
+                    {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                </div>
+
+                {/* Body: Customer details */}
+                <div className="mb-4">
+                  <div className="font-bold text-gray-900 dark:text-white text-lg">{order.fullName}</div>
+                  <a href={`tel:${order.phone}`} className="text-primary hover:underline font-bold flex items-center gap-2 mt-2 bg-primary/10 w-max px-3 py-1.5 rounded-lg text-sm" dir="ltr">
+                    <Phone size={14} /> {order.phone}
+                  </a>
+                  
+                  {/* Badges */}
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {order.hasRetour && <span className="text-[10px] bg-red-100 text-red-800 px-2 py-1 rounded-md font-bold">⚠️ روتور</span>}
+                    {order.hasCancelled && !order.hasRetour && <span className="text-[10px] bg-orange-100 text-orange-800 px-2 py-1 rounded-md font-bold">⚠️ ملغاة سابقا</span>}
+                    {order.isDuplicate && <span className="text-[10px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded-md font-bold">🟡 مكررة</span>}
+                    {isAdmin && order.assignedTo && <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-md flex items-center gap-1 font-bold w-max"><User size={10} /> {order.assignedTo.name}</span>}
+                  </div>
+                </div>
+
+                {/* Footer: Product, Location, Actions */}
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 text-sm grid grid-cols-2 gap-3 mb-3 border border-gray-100 dark:border-gray-800">
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">المنتج</div>
+                    <div className="font-bold text-primary">{order.pageSlug?.toUpperCase()}</div>
+                    {order.offerLabel && <div className="text-xs text-gray-600 mt-0.5">{order.offerLabel} {order.quantity > 1 && <span className="text-primary font-bold">× {order.quantity}</span>}</div>}
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-400 mb-1">العنوان</div>
+                    <div className="font-bold">{order.wilaya}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{order.baladiya}</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={() => setEditOrder(order)}
+                    className="flex-1 text-sm font-bold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 py-2.5 rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+                    📝 تعديل
+                  </button>
+                  {order.bordereauUrl && (
+                    <a href={order.bordereauUrl} target="_blank" className="flex-1 text-sm font-bold bg-blue-50 text-blue-600 py-2.5 rounded-xl hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
+                      🖨️ طباعة
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Loading Overlay */} : <span className="text-gray-300">—</span>;
                         })()}
                       </td>
                     )}
